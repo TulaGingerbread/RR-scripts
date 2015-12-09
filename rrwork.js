@@ -214,6 +214,16 @@ function cancelWork() {
   $("#myfc").remove();
   return false;
 }
+$.ajax({
+  url: '/slide/profile/' + id,
+  async: false,
+  success: function (d) {
+    var it = $(d).find('span.tip.pointer');
+    var q = isNaN(parseInt(it.eq(0).text())) ? 1 : 0;
+    var endurance = parseInt(it.eq(q+2).text());
+    config.energyForOne = endurance < 100 ? Math.ceil(19-(endurance+7)/12) : 10;
+  }
+});
 var mentors = {
   0: 'Без наставников',
   1: '1 наставник',
@@ -223,5 +233,4 @@ var rstr = "", mstr = "", tstr = '<option value="0">Сейчас</option>';
 for (var r in resources) rstr += '<option value="'+r+'">'+resources[r].highName+'</option>';
 for (var m in mentors) mstr += '<option value="'+m+'">'+mentors[m]+'</option>';
 for (var i=1; i<11; i++) tstr += '<option value="'+i+'">Через '+i+' минут'+(i==1?'у':i<5?'ы':'')+'</option>';
-$("body").append('<div style="position:absolute;width:100%;height:100%;z-index:999999;" id="myfc"><form onsubmit="return false;" id="myf" style="width:300px;margin:100px auto;padding:15px;background-color:white;border:1px solid black;">Ресурс: <select name="resource">'+rstr+'</select><br>Наставники: <select name="mentors">'+mstr+'</select><br>Запустить: <select name="delay">'+tstr+'</select><br><input type="checkbox" name="energy_craft">Делать яжку<br><input type="checkbox" name="donate">В бюджет региона <input type="text" name="regionId" maxlength="5" size="5"><br>Кол-во (0 = ∞): <input type="text" name="donateLimit" value="0" size="5"><br><button onclick="startWork()">Работать</button><button onclick="cancelWork()">Отменить</button></form></div>');
-
+$("body").append('<div style="position:absolute;width:100%;height:100%;z-index:100;" id="myfc"><form onsubmit="return false;" id="myf" style="width:300px;margin:100px auto;padding:15px;background-color:white;border:1px solid black;">Ресурс: <select name="resource">'+rstr+'</select><br>Наставники: <select name="mentors">'+mstr+'</select><br>Запустить: <select name="delay">'+tstr+'</select><br><input type="checkbox" name="energy_craft">Делать яжку<br><input type="checkbox" name="donate">В бюджет региона <input type="text" name="regionId" maxlength="5" size="5"><br>Кол-во (0 = ∞): <input type="text" name="donateLimit" value="0" size="5"><br><button onclick="startWork()">Работать</button><button onclick="cancelWork()">Отменить</button></form></div>');

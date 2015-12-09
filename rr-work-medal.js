@@ -306,7 +306,8 @@ $.ajax({
   url: '/slide/profile/' + id,
   async: false,
   success: function (d) {
-    lvl = parseInt($(d).find('h2.index_my_exp_data').text().split(' ')[2].slice(0,-1));
+    var q = $(d).find('h2.index_my_exp_data').text();
+    lvl = parseInt(q.slice(q.length-2));
   }
 });
 var baseAlpha = 1000 + 50 * lvl;

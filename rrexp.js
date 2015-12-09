@@ -41,7 +41,7 @@ function Region(id) {
   this.refreshResources();
 }
 Region.prototype.updateHTML = function () {
-  if (ct() - this.updateTime < 1000 * 60 * 3) return;
+  if ((ct() - this.updateTime) < 1000 * 60 * 3) return;
   var url = '/map/details/' + this.id;
   var data;
   $.ajax({
@@ -83,7 +83,7 @@ Region.prototype.refreshResources = function () {
   }
 };
 Region.prototype.getCurrentResource = function (resource) {
-  return Math.floor(this.resources[resource.type].current);
+  return Math.ceil(this.resources[resource.type].current);
 };
 Region.prototype.getMaxResource = function (resource) {
   return this.resources[resource.type].maximum;
@@ -95,48 +95,51 @@ Region.prototype.getCurrentLimit = function (resource) {
   return this.resources[resource.type].limit;
 };
 Region.prototype.exploration = function (resource) {
-  var amount = resource.maxMargin - this.getMaxResource(resource);
-  var currentLimit = this.getCurrentLimit();
+  var amount = this.getMaxResource(resource) - this.getCurrentResource(resource);
+  var currentLimit = this.getCurrentLimit(resource);
   if (amount > currentLimit) {
     amount = currentLimit;
     fprint('Достигнут предел разведок ' + resource.highName + ' в регионе #' + this.id + ' (' + this.name + ')');
   }
-  if (amount == 0) return;
+  if (amount < 8 && (amount != currentLimit || amount == 0)) return;
   var lawUrl = '/parliament/donew/18/' + resource.type + '_' + amount + '/' + this.id;
-  createLawAndVote(lawUrl);
-  fprint('Разведка на ' + amount + ' ' + resource.highName + ' в регионе #' + this.id + ' (' + this.name + ') проведена');
+  createLawAndVote(lawUrl, function (reg) {
+    fprint('Разведка на ' + amount + ' ' + resource.highName + ' в регионе #' + reg.id + ' (' + reg.name + ') проведена');
+  }(this));
 };
 Region.prototype.deepExploration = function (resource) {
   var amount = resource.maxMargin - this.getMaxResource(resource);
   if (amount == 0) return;
   var lawUrl = '/parliament/donew/34/' + resource.type + '_' + amount + '/' + this.id;
   createLawAndVote(lawUrl);
-  fprint('Глубокая разведка на ' + amount + ' ' + resource.highName + ' в регионе #' + this.id + ' (' + this.name + ') проведена');
+  fprint('Глубокая разведка на ' + amount + ' ' + resource.highName + ' в регионе #' + reg.id + ' (' + reg.name + ') проведена');
 };
-var createLawAndVote = function (lawUrl) {
-  var lawTime = new Date();
+function createLawAndVote(lawUrl) {
+  var lawTime = ct();
   $.ajax({
-    method: "POST",
+    type: "POST",
     url: lawUrl,
-    async: false,
-    data: {c: lawTime.getTime()}
-  });
-  var voteUrl = '/parliament/votelaw/' + config.capital + '/' + config.user + '/' + lawTime.getTime().toString().slice(0,-3) + '/pro';
-  $.ajax({
-    method: "POST",
-    url: voteUrl,
-    async: false,
-    data: {c: ct()}
-  });
-};
+    data: {c: lawTime},
+    success: function (res, status, xhr) {
+      lawTime = new Date(xhr.getResponseHeader("Date")).getTime();
+      var voteUrl = '/parliament/votelaw/' + config.capital + '/' + config.user + '/' + lawTime.toString().slice(0,-3) + '/pro/';
+      $.ajax({
+        type: "POST",
+        url: voteUrl,
+        data: {c: ct()},
+        success: function (data) {}
+      });
+    }
+  });  
+}
 var regions = {};
-var findOrCreateRegion = function (id) {
+function findOrCreateRegion(id) {
   if (regions[id] === undefined) regions[id] = new Region(id);
   if (regions[id].html == "") {
     fprint('Региона #' + this.id + ' не существует!');
   }
   return regions[id];
-};
+}
 function Exploration(expl, counter) {
   this.type = expl.type;
   this.region = findOrCreateRegion(expl.region);
@@ -147,6 +150,7 @@ Exploration.prototype.isDeep = function () {
   return this.type == 1;
 };
 Exploration.prototype.perform = function () {
+  fprint('Разведка: ' + this.toString());
   this.region.refreshResources();
   if (this.isDeep()) this.region.deepExploration(this.resource);
   else this.region.exploration(this.resource);
@@ -164,19 +168,24 @@ Exploration.prototype.toExport = function () {
 var timer;
 var explCounter = 0;
 var explorations = {};
-(function loop() {
+var loop = function () {
+  fprint('Начинаем цикл разведок');
   for (var i in explorations) {
     var expl = explorations[i];
-    expl.perform();    
+    (function (i, expl) {
+      setTimeout(function () {
+        expl.perform();
+      }, 1000*5*i);
+    }(i, expl));
   }
-  timer = setTimeout(loop, 5*60*1000);
-  fprint('Цикл разведок проведен');
-})();
+  timer = setTimeout(loop, 10*60*1000);  
+};
 var stop = function () {
   clearTimeout(timer);
   $("#myfc").remove();
   fprint('Министерство закрыто');
 };
+timer = setTimeout(loop, 10*1000);
 var rstr = '';
 for (var r in resources) rstr += '<option value="'+resources[r].type+'">'+resources[r].highName+'</option>';
 var createExploration = function () {
@@ -214,4 +223,3 @@ var importConfig = function (explArray) {
   }
 };
 $("body").append('<div style="position:absolute;width:100%;height:100%;background-color:rgba(0,0,0,0.8);z-index:999999;" id="myfc"><form onsubmit="return false;" id="myf" style="width:600px;margin:100px auto;padding:15px;background-color:white;border:1px solid black;"><h2>Министерство экономики</h2><hr><h4>Текущие разведки</h4><ul id="cur_expl"></ul><h4>Текущие глубокие разведки</h4><ul id="cur_deep_expl"></ul><button onclick="newExploration()">Добавить разведку</button><button onclick="exportConfig()">Экспортировать</button></form></div>');
-

@@ -20,4 +20,28 @@ function getMarketData(productId) {
   });
   return data;
 }
-
+function Product(id, name) {
+  this.id = id;
+  this.name = name;
+  this.data = getMarketData(id);
+}
+Product.prototype.refreshData = function () {
+  this.data = getMarketData(id);
+};
+Product.prototype.getLowestPrice = function () {
+  return +this.data[1].price;
+};
+Product.prototype.getRealPrice = function () {
+  var avg = 0;
+  for (var i = 1; i < 5; i++) {
+    avg += this.data[i].price;
+  }
+  avg /= 5;
+  return avg;
+};
+var products = {
+  3: new Product(3, 'Oil'),
+  4: new Product(4, 'Ore'),
+  11: new Product(11, 'Uran'),
+  15: new Product(15, 'Diamonds')
+};
